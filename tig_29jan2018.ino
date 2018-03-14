@@ -1,3 +1,5 @@
+//Before running, use Tig_settime_serial.ino to set RTC time to accurate Windows time
+
 
 #include <Wire.h> // built in library, for I2C communications
 #include "RTClib_Tig.h" // Date and time functions using a DS3231 RTC connected via I2C
@@ -92,17 +94,17 @@ void setup() {
   //Serial.println(newtime);
   
 
-  //Test removing once battery is added
-  DateTime compileTime = DateTime(F(__DATE__), F(__TIME__));
-  rtc.adjust(compileTime); //remove once battery added
-  Serial.println("");
-  Serial.print("setting RTC to compile time:\t");
-  printTimeToSerial(compileTime);
+  //Test removing once battery is added; WD removed 14MAR2018 
+//  DateTime compileTime = DateTime(F(__DATE__), F(__TIME__));
+//  rtc.adjust(compileTime); //remove once battery added
+//  Serial.println("");
+//  Serial.print("setting RTC to compile time:\t");
+//  printTimeToSerial(compileTime);
   
   if (rtc.lostPower()) {
-    Serial.println("RTC lost power, lets set the time!");
+    Serial.println("RTC lost power, use Tig_settime_Serial.ino to set the time before proceeding!");
     // following line sets the RTC to the date & time this sketch was compiled
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
   if (serialEcho) {
     Serial.println(", rtc set up...");
@@ -833,22 +835,22 @@ void printTimeToSD (SdFile, DateTime tempTime) { // 'tempTime' is placeholder
     }
     myFile.print(tempTime.month(), DEC);
     myFile.print(F("-"));
-    if (curr.day() < 10) {
+    if (tempTime.day() < 10) {
       myFile.print("0");
     }
     myFile.print(tempTime.day(), DEC);
     myFile.print(F(" "));
-    if (curr.hour() < 10){
+    if (tempTime.hour() < 10){
       myFile.print("0");
     }
     myFile.print(tempTime.hour(), DEC);
     myFile.print(F(":"));
-    if (curr.minute() < 10) {
+    if (tempTime.minute() < 10) {
       myFile.print("0");
     }
     myFile.print(tempTime.minute(), DEC);
     myFile.print(F(":"));
-    if (curr.second() < 10) {
+    if (tempTime.second() < 10) {
       myFile.print("0");
     }
     myFile.print(tempTime.second(), DEC);
