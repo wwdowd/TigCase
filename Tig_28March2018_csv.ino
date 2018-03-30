@@ -40,10 +40,12 @@ DateTime curr; //used as current time in loop
 //pH
 double pHset = 8.40; 
 double pHtolerance = 0.03; //was 0.06
+double phMult = 1; 
 
 //DO
-double DOset = 6.7;
+double DOset = 7.7;
 double DOtolerance = 0.08; //was 0.1 26mar2018
+double DOMult = 1; 
 
 double phUpper; // = pHset + pHtolerance;
 double phLower; // = pHset - pHtolerance;
@@ -285,22 +287,6 @@ Serial.println("    Begin");
 while (curr.year() < 2100) {  //((milli - milli2) < 21600000) { //REPLACE while LOOP WITH TIME-BASED SETPOINT
     curr = rtc.now();
 
-    //  //loop to read Serial.input of typed salinity value-----------
-    if (Serial.available() > 0) {
-    int input = Serial.parseInt();
-    Serial.read();
-    if (input == 1) {
-      Serial.println("Enter new Salinity value: ");
-      while (Serial.available()==0) {             //Wait for user input
-        Salinity = Serial.parseFloat();
-      }
-    } //end if input=1
-      Serial.read();
-    Serial.print("New Salinity entered: ");
-    Serial.println(Salinity);
-    Serial.read(); 
-    }  //end loop to read Serial.input of salinity----------
-    
     milli = millis();
     milliInt = (int)milli;
     tensincemidnight = ((curr.hour()*60)+(curr.minute()))/1; // this tells us which row of csv file to read
@@ -333,7 +319,7 @@ while (curr.year() < 2100) {  //((milli - milli2) < 21600000) { //REPLACE while 
     double doUpper = DOset + DOtolerance;
     double doLower = DOset - DOtolerance;
 
-  //read from sensors in loop
+  //read from sensors pulled out of if/else loop
       c = thermocouple.readCelsius();
       phMeas = getpH();
       doMeas = getDOmgL();
@@ -356,8 +342,52 @@ while (curr.year() < 2100) {  //((milli - milli2) < 21600000) { //REPLACE while 
       Serial.print(" ");
       Serial.print(milli);
       Serial.println(" ");
+
+//    //  //loop to read Serial.input of typed salinity value-----------
+//    if (Serial.available() > 0) {
+//    int input = Serial.parseInt();
+//    Serial.read();
+//    if (input == 1) {
+//      Serial.println("Enter new Salinity value: ");
+//      while (Serial.available()==0) {             //Wait for user input
+//        Salinity = Serial.parseFloat();
+//        if (Salinity < 10 | Salinity > 175) {
+//          Serial.print("Salinity out of range (10-175). Enter new Salinity value: ");
+//          DOset = Serial.parseFloat();
+//          }
+//      }
+//    } //end if input=1
+//      Serial.read();
+//    Serial.print("New Salinity entered: ");
+//    Serial.println(Salinity);
+//    Serial.read(); 
+//    }  //end loop to read Serial.input of salinity----------
+
+  //28mar2018 calculate how far off we are from setpoint, then multiplier of how much time to leave open valves
+  double phDiff = abs((phMeas - pHset)/pHtolerance); //how many x tolerances are we from setpoint
+  if (phDiff > 4) {
+    phMult = 4;
+  }
+  else if (phDiff > 2) {
+    phMult = 1.5;
+  }
+  else if (phDiff > 1.5) {
+    phMult = 1;
+  }
+  double DODiff = abs((doMeas - DOset)/DOtolerance);
+  if (DODiff > 4) {
+    DOMult = 2.5;
+  }
+  else if (DODiff > 2) {
+    DOMult = 1.5;
+  }
+  else if (DODiff > 1.5) {
+    DOMult = 1;
+  }
+  //end calc multipliers-----------------
+      
   //begin scenarios for pHset and DOset vs current reading - pulse gases appropriately
-    if (getpH() > phLower && getpH() < phUpper && getDOmgL() > doLower && getDOmgL() < doUpper) {  //scenario 1
+    if (getpH() > phLower && getpH() < phUpper && getDOmgL() > doLower && getDOmgL() < doUpper) {  //scenario 1 pH = / DO =
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, LOW);
@@ -390,15 +420,15 @@ while (curr.year() < 2100) {  //((milli - milli2) < 21600000) { //REPLACE while 
         //      unixtimeArray[1] = newtime.unixtime();  //fill array with currenttime
         //      writeToSD();
     }
-    else if (getpH() > phLower && getpH() < phUpper && getDOmgL() > doUpper) { //scenario 2
-      digitalWrite(N2valve, HIGH);
-      digitalWrite(CO2valve, LOW);  //why did we make this HIGH here?
-      digitalWrite(O2valve, LOW);
-      delay(200);
+    else if (getpH() > phLower && getpH() < phUpper && getDOmgL() > doUpper) { //scenario 2 pH = / DO +
       digitalWrite(N2valve, HIGH);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, LOW);
-      delay(700);
+      delay(300*DOMult);
+//      digitalWrite(N2valve, HIGH);
+//      digitalWrite(CO2valve, LOW);
+//      digitalWrite(O2valve, LOW);
+//      delay(00);
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, LOW);
@@ -432,11 +462,11 @@ while (curr.year() < 2100) {  //((milli - milli2) < 21600000) { //REPLACE while 
         //      unixtimeArray[1] = newtime.unixtime();  //fill array with currenttime
         //      writeToSD();
     }
-    else if (getpH() > phLower && getpH() < phUpper && getDOmgL() < doLower) { //scenario 3
+    else if (getpH() > phLower && getpH() < phUpper && getDOmgL() < doLower) { //scenario 3 ph = / DO -
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, HIGH);
-      delay(250);
+      delay(50*DOMult);
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, LOW);
@@ -470,15 +500,15 @@ while (curr.year() < 2100) {  //((milli - milli2) < 21600000) { //REPLACE while 
         //      unixtimeArray[1] = newtime.unixtime();  //fill array with currenttime
         //      writeToSD();
     }
-    else if (getpH() > phUpper && getDOmgL() > doUpper) { //scenario 4
+    else if (getpH() > phUpper && getDOmgL() > doUpper) { //scenario 4 pH + / DO + 
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, HIGH);
       digitalWrite(O2valve, LOW);
-      delay(30);
+      delay(10);
       digitalWrite(N2valve, HIGH);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, LOW);
-      delay(250);
+      delay(250*DOMult);
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, LOW);
@@ -512,15 +542,15 @@ while (curr.year() < 2100) {  //((milli - milli2) < 21600000) { //REPLACE while 
         //      unixtimeArray[1] = newtime.unixtime();  //fill array with currenttime
         //      writeToSD();
     }
-    else if (getpH() > phUpper && getDOmgL() < doLower) {  //scenario 5
+    else if (getpH() > phUpper && getDOmgL() < doLower) {  //scenario 5 pH + / DO -
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, HIGH);
       digitalWrite(O2valve, HIGH);
-      delay(30);
+      delay(10);
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, HIGH);
-      delay(250);
+      delay(50*DOMult);
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, LOW);
@@ -554,11 +584,11 @@ while (curr.year() < 2100) {  //((milli - milli2) < 21600000) { //REPLACE while 
         //      unixtimeArray[1] = newtime.unixtime();  //fill array with currenttime
         //      writeToSD();
     }
-    else if (getpH() > phUpper && getDOmgL() > doLower && getDOmgL() < doUpper) {  //scenario 6
+    else if (getpH() > phUpper && getDOmgL() > doLower && getDOmgL() < doUpper) {  //scenario 6 pH + / DO =
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, HIGH);
       digitalWrite(O2valve, LOW);
-      delay(30);
+      delay(10);
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, LOW);
@@ -592,15 +622,15 @@ while (curr.year() < 2100) {  //((milli - milli2) < 21600000) { //REPLACE while 
         //      unixtimeArray[1] = newtime.unixtime();  //fill array with currenttime
         //      writeToSD();
     }
-    else if (getpH() < phLower && getDOmgL() < doLower) { //scenario 7
+    else if (getpH() < phLower && getDOmgL() < doLower) { //scenario 7 pH - / DO - 
       digitalWrite(N2valve, HIGH);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, HIGH);
-      delay(300);
+      delay(300*phMult);
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, HIGH);
-      delay(200);
+      delay(50*DOMult);
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, LOW);
@@ -634,11 +664,11 @@ while (curr.year() < 2100) {  //((milli - milli2) < 21600000) { //REPLACE while 
         //      unixtimeArray[1] = newtime.unixtime();  //fill array with currenttime
         //      writeToSD();
     }
-    else if (getpH() < phLower && getDOmgL() > doUpper) { //scenario 8
+    else if (getpH() < phLower && getDOmgL() > doUpper) { //scenario 8 pH - / DO + 
       digitalWrite(N2valve, HIGH);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, LOW);
-      delay(400);
+      delay(300*phMult);
 //      digitalWrite(N2valve, HIGH);
 //      digitalWrite(CO2valve, LOW);
 //      digitalWrite(O2valve, LOW);
@@ -676,15 +706,15 @@ while (curr.year() < 2100) {  //((milli - milli2) < 21600000) { //REPLACE while 
         //      unixtimeArray[1] = newtime.unixtime();  //fill array with currenttime
         //      writeToSD();
     }
-    else if (getpH() < phLower && getDOmgL() > doLower && getDOmgL() < doUpper) {  //scenario 9
+    else if (getpH() < phLower && getDOmgL() > doLower && getDOmgL() < doUpper) {  //scenario 9 pH - / DO =
       digitalWrite(N2valve, HIGH);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, LOW);
-      delay(400);
+      delay(300*phMult);
       digitalWrite(N2valve, HIGH);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, HIGH); //was low!
-      delay(100);
+      delay(20*phMult); //compensate for N2 by pumping O2 proportion to amount of N2 added to get O2 constant
       digitalWrite(N2valve, LOW);
       digitalWrite(CO2valve, LOW);
       digitalWrite(O2valve, LOW);
