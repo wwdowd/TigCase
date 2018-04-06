@@ -92,6 +92,7 @@ float DOupperlimit = 50;
 
 void setup() {
   Serial.begin(57600); //was 4800 (tried 57600) communicates with computer via Serial port
+  Serial.read(); //clear buffer help???
   doProbe.begin(9600); //communicates with DO probe
   pinMode(O2valve, OUTPUT); //control pin for O2 solenoid valve
   pinMode(N2valve, OUTPUT); //control pin for O2 solenoid valve
@@ -229,9 +230,9 @@ Serial.println(DOset);
 Serial.println("Type 1 in serial monitor and hit Enter to initiate setpoint change");
 
 while (curr.year() < 2100) { //((milli - milli2) < 21600000) { //REPLACE while LOOP WITH TIME-BASED SETPOINT
-    
+  //bool Flag = 1; 
   //loop to read Serial.input of typed pH DO setpoint values-----------
-  if (Serial.available() > 0) {
+  while (Serial.available() > 0) { // && Flag == 1) {
 
     int input = Serial.parseInt();
     Serial.read();
@@ -239,11 +240,23 @@ while (curr.year() < 2100) { //((milli - milli2) < 21600000) { //REPLACE while L
       Serial.println("Enter new pHset value: ");
       while (Serial.available()==0) {             //Wait for user input
         pHset = Serial.parseFloat();
+//        if (pHset < 7.5 | pHset > 9.1) {
+//          Serial.print("pHset out of range (7.5-9.1). Enter new pH value: ");
+//          while (Serial.available()==0) {
+//            pHset = Serial.parseFloat();
+//           }
+//        }
       }
       Serial.read();
       Serial.println("Enter new DOset value: ");
       while (Serial.available()==0) {             //Wait for user input
         DOset = Serial.parseFloat();
+//        if (DOset < 0.5 | DOset > 20) {
+//          Serial.print("DOset out of range (0.5-20). Enter new DO value: ");
+//          while (Serial.available()==0) {
+//            DOset = Serial.parseFloat();
+//          }
+//          }
       }
       Serial.read();
       phUpper = pHset + pHtolerance; //recalculate Upper and Lower bounds when change setpoints,duh!
@@ -257,7 +270,7 @@ while (curr.year() < 2100) { //((milli - milli2) < 21600000) { //REPLACE while L
     Serial.read(); 
     }
   } // end serial.available input loop
-    //end loop to read Serial.input of pHset DOset----------
+     //end loop to read Serial.input of pHset DOset----------
 
    curr = rtc.now(); //take current time
    milli=millis();
