@@ -80,7 +80,7 @@ title('SW density (rho, kg/m^3) as function of S and T')
 
 %Millero, F. J. and Huang, F. (2009). Corrigendum to "The density of seawater
 %as a function of salinity (5 to 70 g kg?1) and temperature (273.15 to 363.15 K)" 
-%published in Ocean Sci., 5, 91–100, 2009. Ocean Sci. 6, 379.
+%published in Ocean Sci., 5, 91â€“100, 2009. Ocean Sci. 6, 379.
 
 a0 = .8211458;
 a1 = -.003959680;
