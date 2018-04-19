@@ -87,7 +87,11 @@ unsigned long lastSampleTime = 0; // so always writes first value
 float Salinity = 34; //, value; //this will be our daily input of S values
 
 // Declare placeholder name for output files written to SD card
-char filename[] = "YYYYMMDD_HHMM_00.csv";
+char filename[] = "YYYYMMDD_HHMM_Tig00_00.csv";
+//placeholder Uno serial number to be stored in EEPROM as "Tig01", etc
+char serialNumber[] = "Tig00";
+// Define a flag to show whether the serialNumber value is real or just zeros
+bool serialValid = true;
 
 uint32_t unixtimeArray[1]; // store unixtime values temporarily
 
@@ -209,7 +213,21 @@ void setup() {
     sd.remove("test.txt");
   }
   
-  //---------------------------------new 29jan2018
+  //---------------------------------new 29jan2018, EEPROM 19apr2018
+  // Grab the serial number from the EEPROM memory
+  // The character array serialNumber was defined in the preamble
+  EEPROM.get(0, serialNumber);
+  if (serialNumber[0] == 'T') {
+    serialValid = true; // set flag
+    Serial.print(F("Read serial number: "));
+    Serial.println(serialNumber);
+  } else {
+    Serial.print(F("No valid serial number: "));
+    Serial.println(serialNumber);
+    serialValid = false;
+  }
+  
+ 
    newtime = rtc.now(); // grab the current time
    initFileName(newtime); // WD wants to include file version in output, uses initFileName fxn below
    Serial.print("Writing to ");
@@ -389,6 +407,24 @@ while (curr.year() < 2100) {  //((milli - milli2) < 21600000) { //REPLACE while 
       Serial.print(" ");
       Serial.print(milli);
       Serial.println(" ");
+
+      //error messages print to serial port for daily monitoring-----------------------------
+      //temp out of bounds
+      if (isnan(c)) {
+      Serial.println("ERROR: No temp data. Check connections!");
+      } else {
+      if (c > TCupperlimit | c < TClowerlimit) {
+      Serial.println("ERROR: Temperature data outside t/c bounds!");}
+      }
+      //pH out of bounds
+      if (phMeas > pHupperlimit | phMeas < pHlowerlimit) {
+        Serial.println("ERROR: pH data outside bounds!");
+      }
+      //DO out of bounds
+      if (doMeas > DOupperlimit | doMeas < DOlowerlimit) {
+        Serial.println("ERROR: DO data outside bounds!");
+      }
+      //end error messages in main loop-----------------------------------------------
 
     //  //loop to read Serial.input of typed salinity value-----------
     //Serial.read();
@@ -963,7 +999,7 @@ double getDOmgL(){
 // initFileName - a function to create a filename for the SD card based
 // on the 4-digit year, month, day, hour, minutes and a 2-digit counter. 
 // The character array 'filename' was defined as a global array 
-// at the top of the sketch in the form "YYYYMMDD_HHMM_00.csv"
+// at the top of the sketch in the form "YYYYMMDD_HHMM_00_Tig00.csv"
 void initFileName(DateTime time1) {
   
   char buf[5];
@@ -1010,23 +1046,23 @@ void initFileName(DateTime time1) {
   }
   // Insert another underscore after time
   filename[13] = '_';
-//  // If there is a valid serialnumber, insert it into 
-//  // the file name in positions 17-20. 
-//  if (serialValid) {
-//    byte serCount = 0;
-//    for (byte i = 17; i < 21; i++){
-//      filename[i] = serialNumber[serCount];
-//      serCount++;
-//    }
-//  }
+  // If there is a valid serialnumber, insert it into 
+  // the file name in positions 17-20. 
+  if (serialValid) {
+    byte serCount = 0;
+    for (byte i = 14; i < 19; i++){
+      filename[i] = serialNumber[serCount];
+      serCount++;
+    }
+  }
   // Next change the counter on the end of the filename
   // (digits 14+15) to increment count for files generated on
   // the same day. This shouldn't come into play
   // during a normal data run, but can be useful when 
   // troubleshooting.
   for (uint8_t i = 0; i < 100; i++) {
-    filename[14] = i / 10 + '0';
-    filename[15] = i % 10 + '0';
+    filename[20] = i / 10 + '0'; //was 14
+    filename[21] = i % 10 + '0'; //was 15
     
     if (!sd.exists(filename)) {
       // when sd.exists() returns false, this block
