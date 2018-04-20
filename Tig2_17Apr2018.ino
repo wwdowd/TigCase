@@ -113,12 +113,12 @@ bool DOfail = false;
 
 // Define two temperature limits for the thermocouples, pH, and DO values outside
 // this range trigger error
-float TClowerlimit = 5.0;
-float TCupperlimit = 60.0;
+float TClowerlimit = 4.0;
+float TCupperlimit = 45.0;
 float pHlowerlimit = 5;
-float pHupperlimit = 10;
-float DOlowerlimit = 0;
-float DOupperlimit = 50;
+float pHupperlimit = 11;
+float DOlowerlimit = 0.02;
+float DOupperlimit = 35;
 
 //begin 23mar2018-------------------------------------------------
 //from https://forum.arduino.cc/index.php?topic=231631.0
@@ -242,7 +242,7 @@ void setup() {
 
   /*  Set-up ADC  */
   adc.begin();
-  adc.setGain(GAIN_ONE);
+  adc.setGain(GAIN_TWOTHIRDS); //was (GAIN_ONE) obscuring signals over 4.09V
 
   /*  Begin reading DO Probe  */
   Serial.println("Beginning reading...");
@@ -976,7 +976,7 @@ static void printDOmgLToSerial (double measure) {
 static double getpH () {
    int16_t pHRaw; //16-bit int dedicated to pH readings to be taken on A0
    pHRaw = adc.readADC_SingleEnded(0); //0 = channel A0
-   double pHVolt = (pHRaw);//+2390.8)/3135.7; //with 1x gain 1 bit = 0.125mV; this conversion empirical
+   double pHVolt = (pHRaw)*.1875/1000;//+2390.8)/3135.7; //with 1x gain 1 bit = 0.125mV; this conversion empirical
    return pHVolt;
 }
 
@@ -991,7 +991,7 @@ double getDOmgL(){
   int16_t DORaw; //16-bit int dedicated to DO reading on A3;
   DORaw = adc.readADC_SingleEnded(3);
   double DOtemp = (double)DORaw;
-  double DOmgLMeas = DOtemp/30000 * 1; //convert uMol to mg/L CHECK THIS!!!
+  double DOmgLMeas = DOtemp*.1875/1000 * 1; //convert uMol to mg/L * 0.0319988; CHECK THIS!!!
   return DOmgLMeas;
 }
 
