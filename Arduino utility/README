@@ -1,1 +1,5 @@
 This folder contains various Arduino programs for setting RTC time, writing a serial number to EEPROM, etc. 
+
+USEFUL HINT: To disable auto reset when connect Serial Monitor on Arduino Uno:
+
+http://playground.arduino.cc/Main/DisablingAutoResetOnSerialConnection
