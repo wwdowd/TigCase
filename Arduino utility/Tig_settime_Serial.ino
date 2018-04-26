@@ -58,17 +58,19 @@ void setup() {
 	Serial.println(F("Make sure serial monitor set to 'newline' at bottom right"));
 	Serial.println(F("Enter a new date and time in the following format")); 
 	Serial.println(F("all on one line: "));
+	Serial.println(F("NOTE: HH must be military 00-23."));
 	Serial.println(F("\tYYYY MM DD HH MM SS"));
 	Serial.println(F("and hit enter when ready to set time by Windows clock"));
 	
 	millisVal = millis();
-	
+	Serial.println(millisVal);
 }
 
 void loop() {
 	if (millis() > millisVal + 1000){
 		millisVal = millis(); // update millisVal
 		currTime = rtc.now(); // read current time from the rtc
+    //Serial.print(currTime.year());
 		Serial.print(F("RTC time: "));
 		char buf[20]; // create a character array to hold the time as a string
 		Serial.print(currTime.year(), DEC);
