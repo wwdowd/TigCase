@@ -28,7 +28,7 @@ SdFile myFile; //file to manipulate/add data to on SD
 CSVFile setFile; // can I declare both class types for same file? NO
 const int sdCS = 10; //CS is pin 10 for SD handling
 Adafruit_ADS1115 adc; //ADC chip
-int tensincemidnight; //no of 10-min windows since midnight, for reading setpoints
+int tensincemidnight; //no of 1-min windows since midnight, for reading setpoints
 //int Model;
 //int SerialNum;
 float DOmgLSet;
@@ -79,6 +79,7 @@ double db2 = -.000001077747;
 double dc0 = .000526528;
 
 double c = 15; //hold readings from thermocouple
+double cprev = 15; //hold last good reading from thermocouple
 double cKel = 15 + 273.15; //thermocouple reading in K for solubility calcs
 double phMeas = 7.77; //hold readings from pH probe, was pHVolt
 double doMeas = 7.77; //hold readings from DO probe, change from DOmgLMeas
@@ -411,19 +412,37 @@ while (curr.year() < 2100) {  //((milli - milli2) < 21600000) { //REPLACE while 
       //error messages print to serial port for daily monitoring-----------------------------
       //temp out of bounds
       if (isnan(c)) {
-      Serial.println("ERROR: No temp data. Check connections!");
-      } else {
-      if (c > TCupperlimit | c < TClowerlimit) {
-      Serial.println("ERROR: Temperature data outside t/c bounds!");}
-      }
+         Serial.println("ERROR: No temp data. Check wire connections!");
+         tcfail = true;
+         c = cprev;}// use last good temperature reading to avoid total breakdown of O2 calculations here 
+      else if (c > TCupperlimit | c < TClowerlimit) {
+      //if (c > TCupperlimit | c < TClowerlimit) {
+         Serial.println("ERROR: Temperature data outside t/c bounds!");
+         tcfail = true;}
+      else {tcfail = false;
+      cprev = c;} //if temp reading is ok, store it as cprev for next round in case lose t/c signal
+      
       //pH out of bounds
-      if (phMeas > pHupperlimit | phMeas < pHlowerlimit) {
-        Serial.println("ERROR: pH data outside bounds!");
+      if (phMeas < 0.00001) {
+        Serial.println(F("ERROR: No pH data. Check connections!"));
+        pHfail = true;
       }
+      else if (phMeas > pHupperlimit | phMeas < pHlowerlimit) {
+        Serial.println(F("ERROR: pH data outside bounds!"));
+        pHfail = true; 
+      }
+      else {pHfail = false;}
+      
       //DO out of bounds
-      if (doMeas > DOupperlimit | doMeas < DOlowerlimit) {
-        Serial.println("ERROR: DO data outside bounds!");
+      if (doMeas < 0.0001) {
+        Serial.println(F("ERROR: No DO data. Check connections!"));
+        DOfail = true;
       }
+      else if (doMeas > DOupperlimit | doMeas < DOlowerlimit) {
+        Serial.println("ERROR: DO data outside bounds!");
+        DOfail = true;
+      }
+      else {DOfail = false;}
       //end error messages in main loop-----------------------------------------------
 
     //  //loop to read Serial.input of typed salinity value-----------
@@ -941,7 +960,7 @@ static void printpHToSD (double pH) {
 static void printpHToSerial (double pH) {
   Serial.print('\t');
   Serial.print("pH (from ADC) = "); 
-  Serial.print(pH);
+  Serial.print(pH,3);
 }
 
 static void printDOuMolToSD (double measure) {
@@ -963,7 +982,7 @@ static void printDOmgLToSD (double measure) {
 
 static void printDOmgLToSerial (double measure) {
   Serial.print("\t DO (mg/L) = ");
-  Serial.print(measure);
+  Serial.print(measure,3);
 }
 
 //void WaitforSerialChar(char start){
@@ -991,8 +1010,8 @@ double getDOmgL(){
   int16_t DORaw; //16-bit int dedicated to DO reading on A3;
   DORaw = adc.readADC_SingleEnded(3);
   double DOtemp = (double)DORaw;
-  double DOmgLMeas = DOtemp*.1875/1000 * 1; //convert uMol to mg/L * 0.0319988; CHECK THIS!!!
-  return DOmgLMeas;
+  double DOmgLMeas = (DOtemp*.1875/1000)*7.0994 - 6.2375; //convert uMol to mg/L * 0.0319988; CHECK THIS!!!
+  return DOmgLMeas;  // 0.01 mg/L = 0.88V; 25 mg/L = 4.4V
 }
 
 //-------------- initFileName --------------------------------------------------
@@ -1083,7 +1102,7 @@ void initFileName(DateTime time1) {
   } // end of file-naming for loop
   //------------------------------------------------------------
   // Write 1st header line to SD file based on mission info
-  myFile.println(F("unixtime,date_time,temp_degC,pH,O2_mgL"));
+  myFile.println(F("unixtime,date_time,temp_degC,pH,O2_mgL,pHset,DOset,tcfail,pHfail,DOfail"));
   // Update the file's creation date, modify date, and access date.
   myFile.timestamp(T_CREATE, time1.year(), time1.month(), time1.day(), 
       time1.hour(), time1.minute(), time1.second());
@@ -1133,7 +1152,18 @@ void writeToSD (void) {//removed 'void' from (), didn't work
     myFile.print(phMeas); // 
     myFile.print(F(","));
     // Print DO reading
-    myFile.println(doMeas); // printlnmakes new line
+    myFile.print(doMeas); 
+    myFile.print(F(","));
+    myFile.print(pHset);
+    myFile.print(F(","));
+    myFile.print(DOset);
+    myFile.print(F(","));
+    myFile.print(tcfail);
+    myFile.print(F(","));
+    myFile.print(pHfail);
+    myFile.print(F(","));
+    myFile.println(DOfail);  
+    // printlnmakes new line
   //}
     myFile.close(); // force the buffer to empty
     DateTime t1 = DateTime(unixtimeArray[0]);
