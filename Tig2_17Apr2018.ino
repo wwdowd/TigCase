@@ -2,6 +2,7 @@
 //tig_cycle_pct.csv file on SD card has 2 columns w/ pH,DO (in eg 45.2 % of air) setpoints every 1 min 
 //NO HEADER ROW!!!
 //ensure .csv file is saved with values as number format and set number of decimals to 4 in Excel first
+//26apr2016 wd: error messages for DO/pH; DO/pH V to mg/L or pH unit conversion done; updated csv output file format
 
 #include <Wire.h> // built in library, for I2C communications
 #include "RTClib_Tig.h" // Date and time functions using a DS3231 RTC connected via I2C
@@ -993,24 +994,27 @@ static void printDOmgLToSerial (double measure) {
 //}
 
 static double getpH () {
+   double pHVolt; 
    int16_t pHRaw; //16-bit int dedicated to pH readings to be taken on A0
    pHRaw = adc.readADC_SingleEnded(0); //0 = channel A0
-   double pHVolt = (pHRaw)*.1875/1000;//+2390.8)/3135.7; //with 1x gain 1 bit = 0.125mV; this conversion empirical
+   if ((pHRaw*.1875/1000) < 0.5) { //if ADC reading < 0.5V (lowest value should be 0.88V)
+    pHVolt = 0;
+   }
+   else {pHVolt = (pHRaw*.1875/1000)*2.2727 + 1;//+2390.8)/3135.7; //with 1x gain 1 bit = 0.125mV; this conversion empirical
+   }
    return pHVolt;
 }
 
-//double getDOuMol(){
-//  WaitforSerialChar('M');
-//  doProbe.parseInt();
-//  doProbe.parseInt();
-//  float DOuMolMeas = doProbe.parseFloat();
-//}
-
 double getDOmgL(){
+  double DOmgLMeas;
   int16_t DORaw; //16-bit int dedicated to DO reading on A3;
   DORaw = adc.readADC_SingleEnded(3);
   double DOtemp = (double)DORaw;
-  double DOmgLMeas = (DOtemp*.1875/1000)*7.0994 - 6.2375; //convert uMol to mg/L * 0.0319988; CHECK THIS!!!
+  if ((DOtemp*.1875/1000) < 0.5) { //if ADC reading < 0.5V (lowest value should be 0.88V)
+    DOmgLMeas = 0;
+  }
+  else {DOmgLMeas = (DOtemp*.1875/1000)*7.0994 - 6.2375; //convert uMol to mg/L * 0.0319988; CHECK THIS!!!
+  }
   return DOmgLMeas;  // 0.01 mg/L = 0.88V; 25 mg/L = 4.4V
 }
 
