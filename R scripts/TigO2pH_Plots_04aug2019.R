@@ -1,5 +1,5 @@
 #create one directory per Arduino
-#
+#why ggplot2 not working on laptop?
 
 setwd("D:/My_documents/WSU/Experiments/Tigriopus/R code/pH DO test") 
 #set working directory to the file that contains all the .csv files for that water source.
